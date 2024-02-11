@@ -1,9 +1,9 @@
 """
-This EEM script should be used with object tracking to detect core isolation
-and EEM policy-maps to change the configured DR priorities dynamically. The
-new priority value is extracted from the policy-map name. The tracked object
-should have an up delay configured, to give protocols time to converge once
-the routers is not isolated anymore.
+This EEM script for IOS XR 7.5.1 or later should be used with object tracking
+to detect core isolation and uses EEM policy-maps to dynamically change the
+configured DR priorities. The new priority value is taken from the policy-map
+name. The tracked object should have an up delay configured, to give protocols
+time to converge once the router is not isolated anymore.
 """
 
 # Author: Tim Dorssers
@@ -13,7 +13,7 @@ from cisco.script_mgmt import xrlog
 from iosxr.xrcli.xrcli_helper import *
 from iosxr import eem
 
-syslog = xrlog.getSysLogger('pim')
+syslog = xrlog.getSysLogger('PIM')
 helper = XrcliHelper()
 rc, event_dict = eem.event_reqinfo()
 
@@ -29,9 +29,9 @@ def conf_dr_prio(new):
     # Create new configuration lines if the current priority is different
     config = [line + new for line, old in matches if old != new]
     if not config:
-        syslog.info('PIM dr-priorities already set')
+        syslog.info('PIM DR priorities already set')
         return
-    syslog.info('Setting PIM dr-priorities to %s' % new)
+    syslog.info('Setting PIM DR priorities to %s' % new)
     result = helper.xr_apply_config_string('\n'.join(config))
     if result['status'] == 'success':
         syslog.info('Commit success')
