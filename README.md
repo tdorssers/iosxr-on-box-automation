@@ -76,3 +76,21 @@ event manager policy-map Deactivate
  action BGP
 !
 ```
+
+## LPTS drop monitor process script
+
+A process script differs from an EEM script because a process script runs forever and cannot interact with the CLI as it does not have a user associated with it. This script provides alerting functionality to LPTS. The command used for measuring drop counts are `show lpts pifib hardware police location <line card>` and `show lpts pifib hardware static-police location <line card>`. If the LPTS drops exceed a certain threshold within a preset interval, a syslog message is generated. Different thresholds can be set for different flow types. The wildcard flow type, indicated by a star, is required. A threshold value must be specified for each flow type.
+
+### Example usage
+
+The next example runs every 60 seconds and sets a threshold of 1000 to the BGP-known flow type and a threshold of 10 for all others.
+
+```
+appmgr
+ process-script Lpts-Mon
+  executable lpts.py
+  run-args -i 60 -f * BGP-known -t 10 1000
+ !
+!
+script process lpts.py checksum SHA256 <checksum>
+```

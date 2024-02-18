@@ -1,4 +1,6 @@
 """
+BGP core tracking
+
 This EEM script for IOS XR 7.5.1 or later should be used with object tracking
 to detect core isolation and uses EEM policy-maps to dynamically (de)activate
 BGP Graceful Maintenance. The new state is taken from the policy-map name. The
@@ -27,7 +29,7 @@ def conf_gr_maint(state):
 	# Get BGP AS from the output
     match = re.search(r'router bgp (\d+)', result['output'])
     if not match:
-        syslog.info('Could not get BGP AS')
+        syslog.warning('Could not get BGP AS')
         return
     if 'all-neighbors' in result['output'] and state:
         syslog.info('BGP Graceful Maintenance (All Neighbors) already active')

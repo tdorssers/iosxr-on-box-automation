@@ -1,4 +1,6 @@
 """
+HSRP aware PIM like behaviour for Cisco IOS XR
+
 This EEM script for IOS XR 7.5.1 or later should be used with object tracking
 to detect core isolation and uses EEM policy-maps to dynamically change the
 configured DR priorities. The new priority value is taken from the policy-map
