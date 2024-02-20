@@ -1,3 +1,5 @@
+[![published](https://static.production.devnetcloud.com/codeexchange/assets/images/devnet-published.svg)](https://developer.cisco.com/codeexchange/github/repo/tdorssers/iosxr-on-box-automation)
+
 # IOS XR Automation Scripts
 
 The scripts available on-box can now leverage [Python libraries](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/script-infrastructure-sample-templates.html), access the underlying router information to execute CLI commands, and monitor router configurations continuously. This results in setting up a seamless automation workflow by improving connectivity, access to resources, and speed of script execution. The following categories of on-box scripts are used to achieve operational simplicity:
