@@ -81,6 +81,26 @@ event manager policy-map Deactivate
 !
 ```
 
+## Commit syslog EEM script
+
+This EEM script implements the IOS style `archive log config` syslog notification for IOS XR. The syslog event trigger is used to detect a commit. A syslog message is generated for each committed configuration line.
+
+### Example usage
+
+```
+event manager action Log-Config
+ username <user>
+ type script script-name commit.py checksum sha256 <checksum>
+!
+event manager policy-map Archive
+ trigger event Commit
+ action Log-Config
+!
+event manager event-trigger Commit
+ type syslog pattern "%MGBL-CONFIG-6-DB_COMMIT : Configuration committed by user"
+!
+```
+
 ## LPTS drop monitor process script
 
 A process script differs from an EEM script because a process script runs forever and cannot interact with the CLI as it does not have a user associated with it. Deploying and using process scripts on the router is described [here](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/process-scripts.html).
