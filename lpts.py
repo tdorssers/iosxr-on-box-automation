@@ -28,6 +28,7 @@ def get_by(flow):
     """ Get threshold for flow type if specified """
     return next((value for key, value in zip(args.flows, args.thres)
                  if key.lower() == flow.lower()), 0)
+
 def check_nodes():
     """ Run show commands and compare with previous """
     patterns = [r'(\S+)\s+\d+\s+\S+\s+\d+\s+\d+\s+\d+\s+(\d+)',
@@ -43,8 +44,9 @@ def check_nodes():
     for node, fqn in nodes:
         for cmd, pattern in zip(commands, patterns):
             # Append decimal node ID to arguments and execute command
-            output = subprocess.check_output(
-                cmd + [str(int(node, 16))], universal_newlines=True)
+            output = subprocess.run(
+                cmd + [str(int(node, 16))], capture_output=True,
+                universal_newlines=True).stdout
             if not re.search(pattern, output):
                 syslog.error('Could not get LPTS drops for ' + fqn)
                 break
