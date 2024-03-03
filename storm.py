@@ -1,5 +1,5 @@
 """
-This script will monitor the drop count over a predefined time interval.
+Monitors the number of storm control drops over a predefined time interval
 
 If the drops exceed a certain threshold value then a syslog message will
 be generated. The command used for measuring drop counts is 'show l2vpn
@@ -29,7 +29,7 @@ def log_drop(drop_type, bd_name, intf, diff=0):
     """ Format log message """
     msg = ['Broadcast', 'Multicast', 'Unknown unicast'][drop_type] + ' traffic'
     msg += ' drop exceeded threshold' if diff else ' drop is below threshold'
-    msg += ' %dp/%ds on %s ' % (threshold[drop_type], args.interval, bd_name)
+    msg += ' %dp/%ds on %s ' % (threshold[drop_type], meantime, bd_name)
     msg += 'neighbor: %s, ID: %s' % intf if isinstance(intf, tuple) else intf
     syslog.info(msg + ' Exact value: %d' % diff if diff else msg)
 
@@ -39,38 +39,42 @@ def check_drop(bd_name, intf, drop_type, drop_val):
     diff = drop_val - old_val
     saved[intf][drop_type] = (drop_val, diff)
     if diff > threshold[drop_type]:
-        log_drop(drop_type, bd_name, intf, diff)
+        log_drop(drop_type, bd_name, intf, diff)  # Threshold exceeded
     elif old_diff > threshold[drop_type]:
-        log_drop(drop_type, bd_name, intf)
+        log_drop(drop_type, bd_name, intf)  # Drop is below threshold
 
-def monitor():
-    """ Run show command """
+def task():
+    """ Run show command and extract values """
     bd_name, intf = '', None
-    # get output line by line as soon as subprocess flushes its stdout buffer
+    # Get output line by line as soon as subprocess flushes its stdout buffer
     with subprocess.Popen(['l2vpn_show', '-d', '0x9'], stdout=subprocess.PIPE,
                           universal_newlines=True) as proc:
         for line in proc.stdout:
-            # find bridge domain and bridge name
+            # Find bridge group and domain name
             m = re.match(r'Bridge group: (.*?), bridge-domain: (.*?),', line)
             if m:
                 bd_name = ':'.join(m.group(1, 2))
                 intf = None
-            # find the AC lines
+                continue
+            # Find the AC lines
             m = re.match(r'\s+AC: (.*?), state is up', line)
             if m:
                 intf = m.group(1)
-            # find the PW lines
+                continue
+            # Find the PW lines
             m = re.match(r'\s+PW: neighbor (.*?), PW ID (.*?),', line)
             if m:
                 intf = m.group(1, 2)
-            # find dropped packets
-            if intf:
-                m = re.match(r'\s+packets: broadcast (\d+), multicast (\d+),'
-                             r' unknown unicast (\d+)', line)
-                if m:
-                    for drop_type, drop_val in enumerate(m.group(1, 2, 3)):
-                        check_drop(bd_name, intf, drop_type, int(drop_val))
-                    intf = None
+                continue
+            # Find dropped packets
+            if not intf:
+                continue
+            m = re.match(r'\s+packets: broadcast (\d+), multicast (\d+),'
+                         r' unknown unicast (\d+)', line)
+            if m:
+                for drop_type, drop_val in enumerate(m.group(1, 2, 3)):
+                    check_drop(bd_name, intf, drop_type, int(drop_val))
+                intf = None
     if not bd_name:
         syslog.error('Could not get bridge-domain details')
 
@@ -80,7 +84,10 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--thres', nargs='+', default=[100], type=int)
     args = parser.parse_args()
     threshold = args.thres if len(args.thres) == 3 else args.thres[:1] * 3
+    meantime, delay, target = 0, max(1, args.interval), time.time()
     while True:
-        start = time.time()
-        monitor()
-        time.sleep(max(0, args.interval - (time.time() - start)))
+        task()
+        # Skip tasks when behind schedule
+        meantime = (time.time() - target) // delay * delay + delay
+        target += meantime
+        time.sleep(max(0, target - time.time()))

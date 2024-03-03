@@ -25,5 +25,8 @@ if __name__ == '__main__':
             # Config lines appear after line starting with !! until end
             m = re.match(r'.*!!.*?\n(.*)end', result['output'], re.DOTALL)
             if m:
+                # One syslog message per config line
                 for line in m.group(1).splitlines():
                     syslog.info('User:%s  logged command:%s' % (user, line))
+        else:
+            syslog.error(result['output'])
