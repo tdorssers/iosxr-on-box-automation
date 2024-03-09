@@ -103,9 +103,26 @@ event manager event-trigger Commit
 
 ## LPTS drop monitor process script
 
+This script provides alerting functionality to LPTS. If the LPTS drops exceed a certain threshold within a preset interval, a syslog message is generated. Different thresholds can be set for different flow types. The wildcard flow type, indicated by a star, is required. A threshold value must be specified for each flow type.
+
 A process script differs from an EEM script because a process script runs forever and cannot interact with the CLI as it does not have a user associated with it. Deploying and using process scripts on the router is described [here](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/process-scripts.html).
 
-This script provides alerting functionality to LPTS. The commands used for measuring drop counts are `show lpts pifib hardware police location <line card>` and `show lpts pifib hardware static-police location <line card>`. If the LPTS drops exceed a certain threshold within a preset interval, a syslog message is generated. Different thresholds can be set for different flow types. The wildcard flow type, indicated by a star, is required. A threshold value must be specified for each flow type.
+The commands used for measuring drop counts are `show lpts pifib hardware police location <line card>` and `show lpts pifib hardware static-police location <line card>`. The `describe` command can be used to find the process to spawn like this:
+
+```
+RP/0/RSP0/CPU0:ios#describe show lpts pifib hardware police location 0/0/CPU0
+The command is defined in gcp_pifib_cmds.parser
+
+
+User needs ALL of the following taskids:
+
+        lpts (READ) 
+
+It will take the following actions:
+Sun Feb 25 14:02:20.937 CET
+  Spawn the process:
+    platform_show_pifib "-z" "0x6" "-i" "33312" 
+```
 
 ### Example usage
 
