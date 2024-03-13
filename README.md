@@ -2,16 +2,16 @@
 
 # IOS XR Automation Scripts
 
-You can run Python scripts on routers running Cisco IOS XR software. The software provides [contextual support](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/script-infrastructure-sample-templates.html) using SDK libraries and standard protocols to:
+You can run Python scripts on routers running Cisco IOS XR software which provides [contextual support](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/script-infrastructure-sample-templates.html) using SDK libraries and standard protocols to:
 * obtain operational data from the router
 * set configurations and conditions
 * detect events in the network and trigger an appropriate action
 
 There are four types of on-box automation scripts that you can leverage to automate your network operations:
-* [Configuration](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/config-scripts.html) (Config) scripts
-* [Execution](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/exec-scripts.html) (Exec) scripts
+* Configuration ([Config](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/config-scripts.html)) scripts
+* Execution ([Exec](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/exec-scripts.html)) scripts
 * [Process](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/process-scripts.html) scripts
-* [Embedded Event Manager](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/event-scripts.html) (EEM) scripts
+* Embedded Event Manager ([EEM](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/event-scripts.html)) scripts
 
 ## PIM DR priority EEM script
 
@@ -33,14 +33,8 @@ event manager policy-map Set-Priority-110
  trigger event Restore
  action Pim
 !
-event manager event-trigger Isolate
- type track name 1 status down
-!
 event manager event-trigger Restore
  type track name 1 status up
-!
-event manager event-trigger Startup
- type timer cron cron-entry "@reboot"
 !
 track 1
  type line-protocol state
@@ -50,41 +44,38 @@ track 1
 !
 ```
 
-Policy for a collapsed core design:
+Policy for a collapsed core design using a timer:
 
 ```
 event manager policy-map Set-Priority-95
  trigger event Startup
  action Pim
 !
+event manager event-trigger Startup
+ type timer cron cron-entry "@reboot"
+!
 ```
 
-Policy for a multi-layer design:
+Policy for a multi-layer design using object tracking:
 
 ```
 event manager policy-map Set-Priority-95
  trigger event Isolate
  action Pim
 !
-```
-
-The below configuration will result in setting the priorities to 95 two times when the router boots, as the `Startup` event will occur before the very first `Isolate` event. The interfaces are down when the router boots, so just triggering on `Isolate` should be sufficient.
-
-```
-event manager policy-map Set-Priority-95
- trigger multi-event "Startup OR Isolate"
- action Pim
+event manager event-trigger Isolate
+ type track name 1 status down
 !
 ```
 
-### Event details
+### Details
 
-The line `rc, event_dict = eem.event_reqinfo()` is used to retrieve the event details. The event_dict has these common items:
+The line `rc, event_dict = eem.event_reqinfo()` in the EEM script retrieves the event details. The `event_dict` has these common items:
 
 | Name | Description |
 | --- | --- |
 | event_id | Unique number that indicates the ID for this published event. Multiple policies may be run for the same event, and each policy will have the same event_id. |
-| event_pub_sec event_pub_msec | The time, in seconds and milliseconds, at which the event was published to the EEM.|
+| event_pub_sec <br/> event_pub_msec | The time, in seconds and milliseconds, at which the event was published to the EEM.|
 | event_name | Name of the event-trigger. |
 | action_name | Name of the action. |
 | policy_map_name | Name of the policy-map. |
@@ -92,22 +83,27 @@ The line `rc, event_dict = eem.event_reqinfo()` is used to retrieve the event de
 | event_type_string | An ASCII string that represents the name of the event for this event type. |
 | event_severity | The severity of the event. |
 
-The event_dict for a *timer* event has these additional items:
+The `event_dict` for a *timer* event has these additional items:
 
 | Name | Description |
 | --- | --- |
 | timer_type | Type of the timer. Can be `cron` or `watchdog`. |
-| timer_time_sec timer_time_msec | Time when the timer expired. |
-| timer_remain_sec timer_remain_msec | The remaining time before the next expiration. |
+| timer_time_sec <br/> timer_time_msec | Time when the timer expired. |
+| timer_remain_sec <br/> timer_remain_msec | The remaining time before the next expiration. |
 
-
-The event_dict for a *track* event has these additional items:
+The `event_dict` for a *track* event has these additional items:
 
 | Name | Description |
 | --- | --- |
 | track_name | Name of the tracked object. |
 | track_state | State of the tracked object when the event was triggered; valid states are `up` or `down`. |
 
+The `helper.xrcli_exec()` method returns a dictionary with these items:
+
+| Name | Description |
+| --- | --- |
+| status | `success` or `error`. |
+| output | The CLI output. |
 
 ## BGP graceful maintenance EEM script
 
@@ -120,7 +116,7 @@ Object tracking is used to detect core isolation and EEM policy-maps are used to
 
 ### Example usage
 
-The event-triggers and tracked object from the above example are used here as well.
+The event-triggers and tracked object from the above example are used here as well. It is also possible to use a multi event trigger, as shown in the `Activate` policy map below.
 
 ```
 event manager action BGP
@@ -157,9 +153,9 @@ event manager event-trigger Commit
 !
 ```
 
-### Event details
+### Details
 
-The event_dict for a *syslog* event has these additional items:
+The `event_dict` for a *syslog* event has these additional items:
 
 | Name | Description |
 | --- | --- |
