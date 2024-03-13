@@ -2,35 +2,32 @@
 
 # IOS XR Automation Scripts
 
-The scripts available on-box can now leverage [Python libraries](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/script-infrastructure-sample-templates.html), access the underlying router information to execute CLI commands, and monitor router configurations continuously. This results in setting up a seamless automation workflow by improving connectivity, access to resources, and speed of script execution. The following categories of on-box scripts are used to achieve operational simplicity:
-* Configuration (Config) scripts
-* Execution (Exec) scripts
-* Process scripts
-* Embedded Event Manager (EEM) scripts
+You can run Python scripts on routers running Cisco IOS XR software. The software provides [contextual support](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/script-infrastructure-sample-templates.html) using SDK libraries and standard protocols to:
+* obtain operational data from the router
+* set configurations and conditions
+* detect events in the network and trigger an appropriate action
 
-Deploying and using EEM scripts on the router is described [here](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/event-scripts.html).
+There are four types of on-box automation scripts that you can leverage to automate your network operations:
+* [Configuration](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/config-scripts.html) (Config) scripts
+* [Execution](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/exec-scripts.html) (Exec) scripts
+* [Process](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/process-scripts.html) scripts
+* [Embedded Event Manager](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/711x/programmability/configuration/guide/b-programmability-cg-asr9000-711x/event-scripts.html) (EEM) scripts
 
 ## PIM DR priority EEM script
 
 IOS XR does not support *HSRP Aware PIM*, a redundancy mechanism for the Protocol Independent Multicast (PIM) protocol to interoperate with Hot Standby Router Protocol (HSRP). It allows PIM to track HSRP state and to preserve multicast traffic upon failover in a redundant network with HSRP enabled.
 
-This workaround uses object tracking to detect PE core isolation and uses EEM policy-maps to change the configured PIM DR priorities dynamically. The new priority value is set to the value after the word `priority` in the policy-map name. The tracked object should have an up delay configured, to give protocols time to converge once the PE is not isolated from the core anymore.
+Depending on the topology, different event triggers can be used. An event fired at startup is likely required in case of a collapsed core design. In a multi-layer design, tracking of the core-facing interfaces is likely required. A multiple event trigger is also possible. This workaround uses EEM policy-maps to change the configured PIM DR priorities dynamically. The new priority value is set to the value after the word *priority* in the policy-map name. The tracked object should have an up delay configured, to give protocols time to converge once the PE is not isolated from the core anymore.
 
 ### Example usage
 
 Required configuration:
 * User and AAA configuration
 
-The multi event trigger is optional as the `Startup` event is redundant. The below configuration will result in setting the priorities to 95 two times when the router boots, as the `Startup` event will occur before the very first `Isolate` event. The interfaces are down when the router boots, so just triggering on `Isolate` should be sufficient. 
-
 ```
 event manager action Pim
  username <user>
  type script script-name pim.py checksum sha256 <checksum>
-!
-event manager policy-map Set-Priority-95
- trigger multi-event "Startup OR Isolate"
- action Pim
 !
 event manager policy-map Set-Priority-110
  trigger event Restore
@@ -53,9 +50,68 @@ track 1
 !
 ```
 
+Policy for a collapsed core design:
+
+```
+event manager policy-map Set-Priority-95
+ trigger event Startup
+ action Pim
+!
+```
+
+Policy for a multi-layer design:
+
+```
+event manager policy-map Set-Priority-95
+ trigger event Isolate
+ action Pim
+!
+```
+
+The below configuration will result in setting the priorities to 95 two times when the router boots, as the `Startup` event will occur before the very first `Isolate` event. The interfaces are down when the router boots, so just triggering on `Isolate` should be sufficient.
+
+```
+event manager policy-map Set-Priority-95
+ trigger multi-event "Startup OR Isolate"
+ action Pim
+!
+```
+
+### Event details
+
+The line `rc, event_dict = eem.event_reqinfo()` is used to retrieve the event details. The event_dict has these common items:
+
+| Name | Description |
+| --- | --- |
+| event_id | Unique number that indicates the ID for this published event. Multiple policies may be run for the same event, and each policy will have the same event_id. |
+| event_pub_sec event_pub_msec | The time, in seconds and milliseconds, at which the event was published to the EEM.|
+| event_name | Name of the event-trigger. |
+| action_name | Name of the action. |
+| policy_map_name | Name of the policy-map. |
+| event_type | Type of event. |
+| event_type_string | An ASCII string that represents the name of the event for this event type. |
+| event_severity | The severity of the event. |
+
+The event_dict for a *timer* event has these additional items:
+
+| Name | Description |
+| --- | --- |
+| timer_type | Type of the timer. Can be `cron` or `watchdog`. |
+| timer_time_sec timer_time_msec | Time when the timer expired. |
+| timer_remain_sec timer_remain_msec | The remaining time before the next expiration. |
+
+
+The event_dict for a *track* event has these additional items:
+
+| Name | Description |
+| --- | --- |
+| track_name | Name of the tracked object. |
+| track_state | State of the tracked object when the event was triggered; valid states are `up` or `down`. |
+
+
 ## BGP graceful maintenance EEM script
 
-CE-PE traffic can be blackholed when a PE is isolated from the core while local prefixes are still advertised. BGP Graceful Maintenance is used as a workaround for this. When activated, the affected routes are advertised again with a reduced preference. This causes neighboring routers to choose alternative routes. You can use any of the following methods to a signal reduced route preference:
+CE-PE traffic can be blackholed when a PE is isolated from the core while still advertising local prefixes. BGP Graceful Maintenance is used as a workaround for this. When activated, the affected routes are advertised again with a reduced preference. This causes neighboring routers to choose alternative routes. You can use any of the following methods to a signal reduced route preference:
 * Add GSHUT community
 * Reduce LOCAL_PREF value
 * Prepend AS Path
@@ -100,6 +156,16 @@ event manager event-trigger Commit
  type syslog pattern "%MGBL-CONFIG-6-DB_COMMIT : Configuration committed by user"
 !
 ```
+
+### Event details
+
+The event_dict for a *syslog* event has these additional items:
+
+| Name | Description |
+| --- | --- |
+| msg_count | Number of times the pattern matched before the event was triggered. |
+| msg | The last syslog message that matches the pattern. |
+| priority | The message priority. |
 
 ## LPTS drop monitor process script
 
