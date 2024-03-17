@@ -211,6 +211,30 @@ RP/0/RSP0/CPU0:Feb 25 13:59:37.945 CET: scripting_python3[67253]: %OS-SCRIPT_LOG
 
 This script will monitor the drop count over a predefined time interval. If the drops exceed a certain threshold value then a syslog message will be generated. The command used for measuring drop counts is 'show l2vpn bridge-domain detail'. The threshold argument takes either a single value for BUM traffic or a list of three values to specify broadcast, multicast and unknown unicast respectively. If you don't specify a value for the thresholds the default will be 100p.
 
+### Documentation
+
+The `show script status detail` command is used to view information about the scripts, such as the calculated SHA256 checksum, a description, the arguments and the action history. The *Script Description* is the first line of the [Docstring](https://peps.python.org/pep-0257/) of the Python script and the *Script Arguments* are the lines under `Arguments:` of the Docstring.
+
+```
+======================================================================================================
+ Name                            | Type   | Status           | Last Action | Action Time               
+------------------------------------------------------------------------------------------------------
+ storm.py                        | process| Config Checksum  | NEW         | Mon Mar 11 12:59:30 2024  
+------------------------------------------------------------------------------------------------------
+ Script Name       : storm.py
+ Checksum          : 8aecc879e0a88f193c432becf63e05c8928466036d3312bb1b1006fd97cf16c1
+ Script Description: Monitors the number of storm control drops over a predefined time interval
+ Script Arguments  :   -i INTERVAL, --interval INTERVAL
+                       -t THRESHOLD [THRESHOLD ...], --threshold THRESHOLD [THRESHOLD ...]
+ History:
+ --------
+ 1.   Action       : NEW
+      Time         : Mon Mar 11 12:59:30 2024
+      Checksum     : 8aecc879e0a88f193c432becf63e05c8928466036d3312bb1b1006fd97cf16c1
+      Description  : User action IN_CLOSE_WRITE
+======================================================================================================
+```
+
 ### Example usage
 
 The next example sets an interval of 60 seconds and all thresholds to 10 packets.
